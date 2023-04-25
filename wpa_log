@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+if which batcat; then
+  sudo python3 wpa_log_parse.py | batcat -l syslog
+elif which bat; then
+  sudo python3 wpa_log_parse.py | bat -l syslog
+else
+  sudo python3 wpa_log_parse.py | cat
+fi

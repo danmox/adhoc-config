@@ -1,0 +1,41 @@
+# systemd service for "host" computer (e.g. a laptop that has internet access)
+#
+# accomplishes three main tasks:
+# 1. configures wpa_supplicant to connect to the mid-adhoc adhoc network
+# 2. configures an IP address
+# 3. sets up internet sharing for isolated nodes in mid-adhoc
+
+[Unit]
+Description=Ad-hoc wireless network connectivity (%i)
+Wants=network.target
+Before=network.target
+BindsTo=sys-subsystem-net-devices-%i.device
+After=sys-subsystem-net-devices-%i.device docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/conf.d/mid-adhoc-host@%i
+
+# configure connection to mid-adhoc via wpa_supplicant with logging
+ExecStart=/usr/bin/rm -f /var/log/wpa_supplicant.log
+ExecStart=/usr/sbin/rfkill unblock 2
+ExecStart=/usr/sbin/ip link set %i up
+ExecStart=/usr/sbin/wpa_supplicant -B -i %i -c /etc/wpa_supplicant/mid-adhoc-open.conf -f /var/log/wpa_supplicant.log -t -d
+ExecStart=/usr/sbin/ip addr add ${addr}/${mask} broadcast + dev %i
+
+# setup internet sharing for ad-hoc network
+ExecStart=/usr/sbin/sysctl -w net.ipv4.ip_forward=1
+ExecStart=/usr/sbin/iptables -t nat -A POSTROUTING -o ${infra} -j MASQUERADE
+ExecStart=/usr/sbin/iptables -I DOCKER-USER 1 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+ExecStart=/usr/sbin/iptables -I DOCKER-USER 2 -i %i -o ${infra} -j ACCEPT
+
+# cleanup
+ExecStop=/usr/sbin/iptables -t nat -D POSTROUTING -o ${infra} -j MASQUERADE
+ExecStop=/usr/sbin/iptables -D DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+ExecStop=/usr/sbin/iptables -D DOCKER-USER -i %i -o ${infra} -j ACCEPT
+ExecStop=/usr/sbin/ip addr flush dev %i
+ExecStop=/usr/sbin/ip link set %i down
+
+[Install]
+WantedBy=multi-user.target

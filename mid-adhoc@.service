@@ -1,0 +1,23 @@
+[Unit]
+Description=Ad-hoc wireless network connectivity (%i)
+Wants=network.target
+Before=network.target
+BindsTo=sys-subsystem-net-devices-%i.device
+After=sys-subsystem-net-devices-%i.device
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStart=rm_path -f /var/log/wpa_supplicant.log
+ExecStart=rfkill_path unblock wifi
+ExecStart=ip_path link set %i up
+ExecStart=wpa_supplicant_path -B -i %i -c /etc/wpa_supplicant/mid-adhoc-open.conf -f /var/log/wpa_supplicant.log -t -d
+ExecStart=iw_path dev %i set txpower fixed 1000
+
+# cleanup
+ExecStop=ip_path addr flush dev %i
+ExecStop=ip_path link set %i down
+
+[Install]
+WantedBy=multi-user.target
