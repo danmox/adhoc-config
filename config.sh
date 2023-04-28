@@ -36,7 +36,7 @@ if [[ "$2" -lt 0 ]] || [[ "$2" -gt 255 ]]; then
   __error_msg_exit "invalid node-id: $2"
 fi
 
-ifaces=$(ip a | sed -nE 's/^[0-9]+: ([a-z0-9]+):.*/\1/p' | grep -vE "^wl.*" | tr '\n' ' ')
+ifaces=$(ip a | sed -nE 's/^[0-9]+: ([a-z0-9]+):.*/\1/p' | grep -E "^w.*" | tr '\n' ' ')
 if ! echo "$ifaces" | grep -qw "$iface"; then
   echo "'$iface' not in list of wireless interfaces: $ifaces"
   exit
